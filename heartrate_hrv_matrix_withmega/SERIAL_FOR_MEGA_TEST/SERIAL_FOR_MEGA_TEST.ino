@@ -9,18 +9,6 @@
 #define C   A2
 RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
 
-//Variables for HRV Calcul
-float moyRR = 0 ;
-float varRR = 0 ;
-int N = 50 ;
-int buffer[50] = {0} ;
-
-int iconConnect[3][5] {
-  {1,0,0,0,1},
-  {0,1,3,1,0},
-  {1,0,0,0,1}
-};
-
 //Matrix for draw heart
 int HeartEmpty[7][9] =
 {
@@ -51,39 +39,6 @@ int AroundHeart[7][16] =
 int originX = 13;
 int originY = 4;
 
-void setup() {
-  //Open serial
-  Serial.begin(9600);
-  Serial1.print(9600);
-  matrix.begin();
-
-  //Color background matrix
-  matrix.fillScreen(matrix.Color888(30, 0, 255));
-
-//Draw Heart
-  drawHeart();
-
-  
-  //Montre rouge
-  // Serial.print("AT+CO1F9EB97EE2F88");
-  //Montre bleu
-  //Serial.print("AT+CO1EF77CACD625F");
-  //delay(2500);
-  Serial.print("Begin..");
-}
-
-
-uint8_t data; //Data from ble module
-int i; //Use for create table with data from ble module
-
-/*
-  Table with data from ble module
-  [Flags,HeartRate,rrInterval,rrInterval,...]
-*/
-byte tableData[6];
-
-uint16_t rrValue; //RRvalue in millisecond
-
 /*
    Used for set the delay for heart animation
    There is 10 delay
@@ -91,21 +46,40 @@ uint16_t rrValue; //RRvalue in millisecond
 */
 int timing = 100;
 
-//Test for color background
-int incre = 20;
+void setup() {
+  // init
+  Serial.begin(9600);  // USB (choose 115200 in terminal)
+  Serial1.begin(9600);
+  matrix.begin();
+  Serial.print("Begin...");  
+  //Color background matrix
+  matrix.fillScreen(matrix.Color888(30, 0, 255));
+  
+  //Draw Heart
+  drawHeart();
+}
+String data;
+String bpm;
+String rrMs;
 void loop() {
-
-  //GET DATA FROM BLE MODULE
+  animationHeart(); //Call function for animate the heart
   if (Serial1.available())
   {
-    Serial.print("ok");
-    Serial.write(Serial1.read()); 
+    //Get data with ":" afetr value
+    bpm = Serial1.readStringUntil(':');
+    rrMs = Serial1.readStringUntil(':');
+    //AFFICHAGE
+    Serial.print("BPM : ");
+    Serial.println(bpm);
+    Serial.print("RR : ");
+    Serial.println(rrMs);
+    //BPM
+    timing = 6000 / bpm.toInt(); 
   }
-  // Keep reading from Arduino Serial Monitor and send to HC-05
-  if (Serial.available())
-  
-    Serial1.write(Serial.read());
- 
+  // Use for send data from arduino to central
+  //Don't work
+  /*if (Serial.available())
+    Serial1.write(Serial.read());*/
 }
 
 
@@ -159,25 +133,4 @@ void animationHeart()
     delay(timing);
   }
 
-}
-
-
-
-float computeHRV(float RR)
-{
-  /*
-     HRV Calculation
-  */
-  RR = RR / 1000 ;
-  float dMoy = (RR - buffer[0]) / N ;
-  moyRR = moyRR + dMoy ;
-
-  float dVar = dMoy * (RR + buffer[0] - 2 * moyRR - dMoy) ;
-  varRR = varRR + dVar ;
-
-  for (int i = 0 ; i < N - 1 ; i++)
-    buffer[i] = buffer[i + 1] ;
-  buffer[N - 1] = RR ;
-
-  return varRR ;
 }
